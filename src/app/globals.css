@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Boteco do Turde — paleta
+   Preto fosco, madeira e âmbar. Nada de cinza corporativo.
+   ===================================================================== */
+@theme {
+  --color-noite:      #14110E;
+  --color-madeira:    #1E1915;
+  --color-madeira-2:  #29221B;
+  --color-linha:      #3A2F25;
+  --color-giz:        #F6F0E6;
+  --color-giz-fraco:  #B3A28D;
+  --color-brasa:      #E9A33C;
+  --color-brasa-2:    #C9822A;
+  --color-verde:      #7CC08A;
+  --color-vermelho:   #E56A50;
+  --color-azul:       #6FA8D0;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --radius-xl2: 1.25rem;
+}
+
+/* Base ---------------------------------------------------------------- */
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-noite);
+  color: var(--color-giz);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+  /* leve textura de madeira, só com gradiente — zero requisição de rede */
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, rgba(233, 163, 60, 0.09), transparent 60%),
+    linear-gradient(180deg, #14110E 0%, #17130F 100%);
+  background-attachment: fixed;
+}
+
+/* Tipografia forte de placa de bar ------------------------------------ */
+.display {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.rotulo {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-giz-fraco);
+}
+
+/* Foco visível em tudo que é interativo ------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brasa);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* Campos numéricos sem as setinhas ------------------------------------ */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Honeypot: invisível para gente, preenchível por robô ---------------- */
+.armadilha {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Rolagem horizontal só onde é necessária ----------------------------- */
+.rolagem-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
