@@ -68,6 +68,7 @@ insert into public.settings (key, value) values
   ('reservation_duration_minutes', '120'),
   ('slot_minutes',                 '30'),
   ('last_slot_offset_minutes',     '60'),
+  ('last_slot_time',               '"20:00"'),
   ('min_lead_minutes',             '60'),
   ('booking_window_days',          '30'),
 

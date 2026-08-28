@@ -329,6 +329,7 @@ export async function salvarConfiguracoes(formData: FormData): Promise<Retorno> 
     "bar_phone",
     "bar_instagram",
     "rules_text",
+    "last_slot_time",
     "msg_confirm",
     "msg_decline",
     "msg_reminder",
@@ -351,6 +352,17 @@ export async function salvarConfiguracoes(formData: FormData): Promise<Retorno> 
     if (bruto === null) continue;
     let texto = String(bruto);
     if (chave === "bar_phone") texto = somenteDigitos(texto);
+    if (chave === "last_slot_time") {
+      texto = texto.trim();
+      // Vazio = sem teto de horário. Qualquer outra coisa precisa ser HH:MM,
+      // senão o banco estoura ao converter para `time`.
+      if (texto !== "" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(texto)) {
+        return {
+          ok: false,
+          erro: "O último horário precisa estar no formato HH:MM (ex.: 20:00) ou ficar em branco.",
+        };
+      }
+    }
     linhas.push({ key: chave, value: texto });
   }
 

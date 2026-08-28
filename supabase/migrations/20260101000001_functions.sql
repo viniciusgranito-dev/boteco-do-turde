@@ -148,6 +148,39 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------
+-- Último horário de chegada que o bar oferece num dia
+--
+-- Dois limites, vale o mais cedo:
+--   • last_slot_offset_minutes — relativo ao fechamento (fecha 23:30 com
+--     60 aqui = último horário 22:30);
+--   • last_slot_time — um teto absoluto, tipo '20:00'. Vazio = sem teto.
+--
+-- O teto absoluto existe porque o bar fecha em horários diferentes ao
+-- longo da semana; só com o offset não dava para cravar 20:00 em todo dia.
+-- ---------------------------------------------------------------------
+create or replace function public.ultimo_horario(
+  p_date      date,
+  p_closes_at timestamptz
+)
+returns timestamptz
+language plpgsql stable set search_path = public as $$
+declare
+  v_tz     text := public.bar_tz();
+  v_off    integer := public.setting_int('last_slot_offset_minutes', 60);
+  v_teto   text := btrim(public.setting_text('last_slot_time', ''));
+  v_limite timestamptz := p_closes_at - make_interval(mins => v_off);
+begin
+  if v_teto <> '' then
+    v_limite := least(
+      v_limite,
+      timezone(v_tz, (p_date + v_teto::time)::timestamp)
+    );
+  end if;
+  return v_limite;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Configuração pública do formulário (nada sensível sai daqui)
 -- ---------------------------------------------------------------------
 create or replace function public.get_booking_config()
@@ -204,7 +237,7 @@ declare
   v_win      record;
   v_slot_min integer := public.setting_int('slot_minutes', 30);
   v_dur      integer := public.setting_int('reservation_duration_minutes', 120);
-  v_last_off integer := public.setting_int('last_slot_offset_minutes', 60);
+
   v_days     integer := public.setting_int('booking_window_days', 30);
   v_lead     integer := public.setting_int('min_lead_minutes', 60);
   v_today    date := (now() at time zone v_tz)::date;
@@ -233,7 +266,7 @@ begin
     into v_slots
     from generate_series(
            v_win.opens_at,
-           v_win.closes_at - make_interval(mins => v_last_off),
+           public.ultimo_horario(p_date, v_win.closes_at),
            make_interval(mins => v_slot_min)
          ) as s
    where s >= now() + make_interval(mins => v_lead);
@@ -304,7 +337,7 @@ declare
   v_max_active integer := public.setting_int('max_active_per_phone', 3);
   v_slot_min   integer := public.setting_int('slot_minutes', 30);
   v_lead       integer := public.setting_int('min_lead_minutes', 60);
-  v_last_off   integer := public.setting_int('last_slot_offset_minutes', 60);
+
   v_days       integer := public.setting_int('booking_window_days', 30);
   v_table      public.tables%rowtype;
   v_ends       timestamptz;
@@ -351,7 +384,7 @@ begin
   end if;
 
   if p_starts_at < v_win.opens_at
-     or p_starts_at > v_win.closes_at - make_interval(mins => v_last_off)
+     or p_starts_at > public.ultimo_horario(v_date, v_win.closes_at)
      or p_starts_at < now() + make_interval(mins => v_lead)
      or (extract(epoch from (p_starts_at - v_win.opens_at))::bigint % (v_slot_min * 60)) <> 0 then
     raise exception 'HORARIO_INVALIDO';

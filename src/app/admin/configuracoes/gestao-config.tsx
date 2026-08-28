@@ -135,6 +135,20 @@ export function GestaoConfig({
               </Ajuda>
             </div>
             <div>
+              <Label htmlFor="last_slot_time">Último horário de chegada</Label>
+              <Input
+                id="last_slot_time"
+                name="last_slot_time"
+                type="time"
+                step={300}
+                defaultValue={String(config.last_slot_time ?? "")}
+              />
+              <Ajuda>
+                O site não oferece nenhum horário depois deste, em nenhum dia da
+                semana. Deixe em branco para liberar até perto de fechar.
+              </Ajuda>
+            </div>
+            <div>
               <Label htmlFor="rules_text">Regras que o cliente lê</Label>
               <Textarea
                 id="rules_text"

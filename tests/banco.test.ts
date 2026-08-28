@@ -145,6 +145,7 @@ descreve("regras de reserva no banco", () => {
   beforeEach(async () => {
     await db.query("truncate public.reservations, public.audit_log cascade");
     await db.query("delete from public.special_dates");
+    await db.query("delete from public.settings where key = 'last_slot_time'");
     await db.query("delete from public.blocked_phones");
     await db.query(
       "update public.settings set value = '3' where key = 'max_active_per_phone'",
@@ -389,6 +390,41 @@ descreve("regras de reserva no banco", () => {
       await expect(
         reservar({ inicio: await amanhaAs("23:00"), pessoas: 2 }),
       ).rejects.toThrow(/HORARIO_INVALIDO/);
+    });
+
+    it("respeita o teto absoluto de horário (last_slot_time)", async () => {
+      await db.query(
+        "insert into public.settings (key, value) values ('last_slot_time', '\"20:00\"') on conflict (key) do update set value = excluded.value",
+      );
+
+      // 20:00 é o último horário aceito.
+      const ok = await reservar({ inicio: await amanhaAs("20:00"), pessoas: 2 });
+      expect(ok.status).toBe("pendente");
+
+      // 20:30 fica de fora, mesmo o bar fechando 23:30.
+      await expect(
+        reservar({
+          inicio: await amanhaAs("20:30"),
+          pessoas: 2,
+          telefone: "14998887766",
+        }),
+      ).rejects.toThrow(/HORARIO_INVALIDO/);
+
+      // A grade oferecida também para às 20:00.
+      const { rows } = await db.query<{ d: { slots: string[] } }>(
+        `select public.get_day_availability(
+                  ((now() at time zone 'America/Sao_Paulo')::date + 1)) as d`,
+      );
+      const horas = rows[0].d.slots.map((s) =>
+        new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(new Date(s)),
+      );
+      expect(horas.at(-1)).toBe("20:00");
+
+      await db.query("delete from public.settings where key = 'last_slot_time'");
     });
 
     it("recusa dia em que o bar não abre", async () => {
