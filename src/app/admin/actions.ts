@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mensagemDoErro } from "@/lib/errors";
 import { somenteDigitos } from "@/lib/format";
+import {
+  ipDoPedido,
+  liberarFreio,
+  tempoDeEspera,
+  verificarFreio,
+} from "@/lib/rate-limit";
 import type { ReservationStatus } from "@/lib/types";
 
 export type Retorno = { ok: boolean; erro?: string };
@@ -54,14 +60,43 @@ export async function entrar(
   }
 
   const supabase = await createClient();
+  const ip = await ipDoPedido();
+  const emailNormalizado = email.toLowerCase();
+
+  // O freio vem ANTES de tocar no Auth — é o que segura força bruta.
+  // Por IP tem castigo crescente (10 min, 30 min, 1h30, 2 h). Por e-mail
+  // é só janela, sem castigo: senão daria para trancar a conta de um
+  // funcionário de fora, só chutando senha errada no e-mail dele.
+  for (const [acao, chave] of [
+    ["login_ip", ip],
+    ["login_email", emailNormalizado],
+  ] as const) {
+    const freio = await verificarFreio(supabase, acao, chave);
+    if (!freio.liberado) {
+      return {
+        ok: false,
+        erro: `Muitas tentativas de acesso. Espere ${tempoDeEspera(
+          freio.esperaSegundos,
+        )} e tente de novo.`,
+      };
+    }
+  }
+
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password: senha,
   });
 
   if (error) {
+    // Mensagem única de propósito: não revela se o e-mail existe.
     return { ok: false, erro: "E-mail ou senha incorretos." };
   }
+
+  // Deu certo: zera o contador para quem só errou a senha algumas vezes
+  // não ficar com saldo queimado. Funciona aqui porque a sessão já está
+  // de pé — rate_limit_reset não é concedida ao anon.
+  await liberarFreio(supabase, "login_ip", ip);
+  await liberarFreio(supabase, "login_email", emailNormalizado);
 
   redirect("/admin");
 }

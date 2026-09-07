@@ -4,6 +4,8 @@
  */
 const MENSAGENS: Record<string, string> = {
   SPAM: "Não foi possível enviar. Recarregue a página e tente de novo.",
+  MUITAS_TENTATIVAS:
+    "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.",
   NOME_INVALIDO: "Escreva seu nome e sobrenome.",
   TELEFONE_INVALIDO: "Confira o WhatsApp: precisa ser DDD + número.",
   TELEFONE_BLOQUEADO:
